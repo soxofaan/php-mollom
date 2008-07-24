@@ -13,6 +13,9 @@
  * - Fixed getServerList. I misinterpreted the documentation, so now the defaultserver is xmlrpc.mollom.com instead of the first fallback-server.
  * - Fixed the timeout-issue. With fsockopen the timeout on connect wasn't respected. Rewrote the doCall function to use CURL over sockets.
  * 
+ * Changelog since 1.1.0
+ * - Fixed a problem with the IP-addresses. see http://blog.verkoyen.eu/2008/07/12/important-php-mollom-update/
+ * 
  * License
  * Copyright (c) 2008, Tijs Verkoyen. All rights reserved.
  *
@@ -24,13 +27,21 @@
  * This software is provided by the copyright holders and contributors "as is" and any express or implied warranties, including, but not limited to, the implied warranties of merchantability and fitness for a particular purpose are disclaimed. In no event shall the copyright owner or contributors be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this software, even if advised of the possibility of such damage.
  *
  * @author			Tijs Verkoyen <mollom@verkoyen.eu>
- * @version			1.1.0
+ * @version			1.1.1
  *
  * @copyright		Copyright (c) 2008, Tijs Verkoyen. All rights reserved.
  * @license			http://mollom.local/license BSD License
  */
 class Mollom
 {
+	/**
+	 * The allowed reverse proxy addresses
+	 *
+	 * @var	array
+	 */
+	private static $allowedReverseProxyAddresses = array();
+	
+	
 	/**
 	 * Your private key
 	 *
@@ -50,6 +61,14 @@ class Mollom
 	 */
 	private static $publicKey;
 
+	
+	/**
+	 * Reverse proxy allowed?
+	 *
+	 * @var	bool
+	 */
+	private static $reverseProxy = false;
+	
 
 	/**
 	 * The default server
@@ -86,7 +105,7 @@ class Mollom
 	 *
 	 * @var	string
 	 */
-	private static $userAgent = 'MollomPHP/1.1.0';
+	private static $userAgent = 'MollomPHP/1.1.1';
 
 
 	/**
@@ -155,9 +174,7 @@ class Mollom
 		$solution = (string) $solution;
 
 		// set autor ip
-		$authorIp = null;
-		$authorIp = (isset($_SERVER['REMOTE_ADDR']) && $_SERVER['REMOTE_ADDR'] != '') ? $_SERVER['REMOTE_ADDR'] : null;
-		if(isset($_SERVER['HTTP_X_FORWARDED_FOR']) && $_SERVER['HTTP_X_FORWARDED_FOR'] != '') $authorIp = array_pop(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
+		$authorIp = self::getIpAddress();
 
 		// set parameters
 		$parameters['session_id'] = $sessionId;
@@ -214,15 +231,13 @@ class Mollom
 		if($postTitle !== null) $parameters['post_title'] = (string) $postTitle;
 		if($postBody !== null) $parameters['post_body'] = (string) $postBody;
 		if($authorName !== null) $parameters['author_name'] = (string) $authorName;
-		if($authorUrl !== null) $parameters['author_url'] = (string) $authorName;
+		if($authorUrl !== null) $parameters['author_url'] = (string) $authorUrl;
 		if($authorEmail !== null) $parameters['author_mail'] = (string) $authorEmail;
 		if($authorOpenId != null) $parameters['author_openid'] = (string) $authorOpenId;
 		if($authorId != null) $parameters['author_id'] = (string) $authorId;
 
 		// set autor ip
-		$authorIp = null;
-		$authorIp = (isset($_SERVER['REMOTE_ADDR']) && $_SERVER['REMOTE_ADDR'] != '') ? $_SERVER['REMOTE_ADDR'] : null;
-		if(isset($_SERVER['HTTP_X_FORWARDED_FOR']) && $_SERVER['HTTP_X_FORWARDED_FOR'] != '') $authorIp = array_pop(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
+		$authorIp = self::getIpAddress();
 		if($authorIp != null) $parameters['author_ip'] = (string) $authorIp;
 
 		// do the call
@@ -471,9 +486,8 @@ class Mollom
 		$parameters = array();
 
 		// set autor ip
-		$authorIp = (isset($_SERVER['REMOTE_ADDR']) && $_SERVER['REMOTE_ADDR'] != '') ? $_SERVER['REMOTE_ADDR'] : null;
-		if(isset($_SERVER['HTTP_X_FORWARDED_FOR']) && $_SERVER['HTTP_X_FORWARDED_FOR'] != '') $authorIp = array_pop(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
-
+		$authorIp = self::getIpAddress();
+		
 		// set parameters
 		if($sessionId != null) $parameters['session_id'] = (string) $sessionId;
 		if($authorIp != null) $parameters['author_ip'] = (string) $authorIp;
@@ -521,9 +535,8 @@ class Mollom
 		$parameters = array();
 
 		// set autor ip
-		$authorIp = (isset($_SERVER['REMOTE_ADDR']) && $_SERVER['REMOTE_ADDR'] != '') ? $_SERVER['REMOTE_ADDR'] : null;
-		if(isset($_SERVER['HTTP_X_FORWARDED_FOR']) && $_SERVER['HTTP_X_FORWARDED_FOR'] != '') $authorIp = array_pop(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
-
+		$authorIp = self::getIpAddress();
+		
 		// set parameters
 		if($sessionId !== null) $parameters['session_id'] = (string) $sessionId;
 		if($authorIp !== null) $parameters['author_ip'] = (string) $authorIp;
@@ -544,7 +557,39 @@ class Mollom
 		return $aReturn;
 	}
 
+	
+	/**
+	 * Get the real IP-address
+	 *
+	 * @return	string
+	 */
+	public static function getIpAddress()
+	{
+		// pre check
+		if(!isset($_SERVER['REMOTE_ADDR'])) return null;
+		
+		// get ip
+		$ipAddress = $_SERVER['REMOTE_ADDR'];
+		
+		if(self::$reverseProxy) 
+		{
+			if(isset($_SERVER['HTTP_X_FORWARDED_FOR']))
+			{
+				if(!empty(self::$allowedReverseProxyAddresses) && in_array($ipAddress, self::$allowedProxyAddresses, true))
+				{
+					return array_pop(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
+				}
+   			}
 
+   			// running in a cluster environment
+			if(isset($_SERVER['HTTP_X_CLUSTER_CLIENT_IP'])) return $_SERVER['HTTP_X_CLUSTER_CLIENT_IP'];
+		}
+		
+		// fallback
+		return $ipAddress;
+	}
+	
+	
 	/**
 	 * Obtains a list of valid servers
 	 *
@@ -558,9 +603,6 @@ class Mollom
 		// validate
 		if(!isset($responseString->params->param->value->array->data->value)) throw new Exception('Invalid response in getServerList.');
 
-		// set the default as first
-		self::$serverList[] = self::$serverHost;
-		
 		// loop servers and add them
 		foreach ($responseString->params->param->value->array->data->value as $server) self::$serverList[] = (string) $server->string;
 
@@ -651,6 +693,22 @@ class Mollom
 		return false;
 	}
 
+	
+	/**
+	 * Set the allowed reverse proxy Addresses
+	 *
+	 * @return	void
+	 * @param	array $addresses
+	 */
+	public static function setAllowedReverseProxyAddresses($addresses)
+	{
+		// store allowed ip-addresses
+		self::$allowedReverseProxyAddresses = (array) $addresses;
+		
+		// set reverse proxy
+		self::$reverseProxy = (!empty($addresses)) ? true : false;
+	}
+	
 
 	/**
 	 * Set the private key
