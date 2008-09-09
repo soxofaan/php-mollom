@@ -16,6 +16,10 @@
  * Changelog since 1.1.0
  * - Fixed a problem with the IP-addresses. see http://blog.verkoyen.eu/2008/07/12/important-php-mollom-update/
  * 
+ * Changelog since 1.1.1
+ * - PHPMollom was using HTTP 1.1, now HTTP 1.0.
+ * - Fallbackserver are hardcode, when no servers could be retrieved the fallbacks are used
+ * 
  * License
  * Copyright (c) 2008, Tijs Verkoyen. All rights reserved.
  *
@@ -27,7 +31,7 @@
  * This software is provided by the copyright holders and contributors "as is" and any express or implied warranties, including, but not limited to, the implied warranties of merchantability and fitness for a particular purpose are disclaimed. In no event shall the copyright owner or contributors be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this software, even if advised of the possibility of such damage.
  *
  * @author			Tijs Verkoyen <mollom@verkoyen.eu>
- * @version			1.1.1
+ * @version			1.1.2
  *
  * @copyright		Copyright (c) 2008, Tijs Verkoyen. All rights reserved.
  * @license			http://mollom.local/license BSD License
@@ -105,7 +109,7 @@ class Mollom
 	 *
 	 * @var	string
 	 */
-	private static $userAgent = 'MollomPHP/1.1.1';
+	private static $userAgent = 'MollomPHP/1.1.2';
 
 
 	/**
@@ -307,9 +311,6 @@ class Mollom
 
 		if($server === null && $countServerList == 0) throw new Exception('No servers found, populate the serverlist. See setServerList().');
 
-		// validate counter
-		if($counter >= $countServerList && $countServerList != 0);
-
 		// redefine var
 		$method = (string) $method;
 		$parameters = (array) $parameters;
@@ -369,6 +370,7 @@ class Mollom
 		@curl_setopt($curl, CURLOPT_USERAGENT, self::$userAgent);
 		
 		// set options
+		@curl_setopt($curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
 		@curl_setopt($curl, CURLOPT_POST, true);
 		@curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
 		@curl_setopt($curl, CURLOPT_HEADER, true);
@@ -606,6 +608,8 @@ class Mollom
 		// loop servers and add them
 		foreach ($responseString->params->param->value->array->data->value as $server) self::$serverList[] = (string) $server->string;
 
+		if(count(self::$serverList) == 0) self::$serverList = array('http://xmlrpc3.mollom.com', 'http://xmlrpc2.mollom.com', 'http://xmlrpc1.mollom.com');
+		
 		// return
 		return self::$serverList;
 	}
