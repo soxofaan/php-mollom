@@ -5,33 +5,38 @@
  * This source file can be used to communicate with mollom (http://mollom.com)
  *
  * The class is documented in the file itself, but you can find more documentation and examples on the docs-page (http://mollom.crsolutions.be/docs).
- * If you find any bugs help me out and report them. Reporting can be done by sending an email to php-mollom-bugs[at]verkoyen[dot]eu. If you report a bug, make sure you give me enough information (include your code). 
+ * If you find any bugs help me out and report them. Reporting can be done by sending an email to php-mollom-bugs[at]verkoyen[dot]eu. If you report a bug, make sure you give me enough information (include your code).
  * If you have questions, try the Mollom-forum, don't send them by mail, I won't read them.
- * 
+ *
  * Changelog since 1.0.1
  * - Fixed a nasty bug. Possible infinite loop in doCall().
  * - Fixed getServerList. I misinterpreted the documentation, so now the defaultserver is xmlrpc.mollom.com instead of the first fallback-server.
  * - Fixed the timeout-issue. With fsockopen the timeout on connect wasn't respected. Rewrote the doCall function to use CURL over sockets.
- * 
+ *
  * Changelog since 1.1.0
  * - Fixed a problem with the IP-addresses. see http://blog.verkoyen.eu/2008/07/12/important-php-mollom-update/
- * 
+ *
  * Changelog since 1.1.1
  * - PHPMollom was using HTTP 1.1, now HTTP 1.0.
- * - Fallbackserver are hardcode, when no servers could be retrieved the fallbacks are used
- * 
+ * - Fallbackserver are hardcoded, when no servers could be retrieved the fallbacks are used
+ *
+ * Changelog since 1.1.2
+ * - Typo
+ * - New Licence: BSD Modified
+ *
  * License
  * Copyright (c) 2008, Tijs Verkoyen. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
- * - Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
- * - Neither the name of Tijs Verkoyen, PHP Mollom nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
  *
- * This software is provided by the copyright holders and contributors "as is" and any express or implied warranties, including, but not limited to, the implied warranties of merchantability and fitness for a particular purpose are disclaimed. In no event shall the copyright owner or contributors be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this software, even if advised of the possibility of such damage.
+ * 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products derived from this software without specific prior written permission.
+ *
+ * This software is provided by the author ``as is'' and any express or implied warranties, including, but not limited to, the implied warranties of merchantability and fitness for a particular purpose are disclaimed. In no event shall the author be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this software, even if advised of the possibility of such damage.
  *
  * @author			Tijs Verkoyen <mollom@verkoyen.eu>
- * @version			1.1.2
+ * @version			1.1.3
  *
  * @copyright		Copyright (c) 2008, Tijs Verkoyen. All rights reserved.
  * @license			http://mollom.local/license BSD License
@@ -44,8 +49,8 @@ class Mollom
 	 * @var	array
 	 */
 	private static $allowedReverseProxyAddresses = array();
-	
-	
+
+
 	/**
 	 * Your private key
 	 *
@@ -65,14 +70,14 @@ class Mollom
 	 */
 	private static $publicKey;
 
-	
+
 	/**
 	 * Reverse proxy allowed?
 	 *
 	 * @var	bool
 	 */
 	private static $reverseProxy = false;
-	
+
 
 	/**
 	 * The default server
@@ -109,7 +114,7 @@ class Mollom
 	 *
 	 * @var	string
 	 */
-	private static $userAgent = 'MollomPHP/1.1.2';
+	private static $userAgent = 'MollomPHP/1.1.3';
 
 
 	/**
@@ -368,7 +373,7 @@ class Mollom
 
 		// set useragent
 		@curl_setopt($curl, CURLOPT_USERAGENT, self::$userAgent);
-		
+
 		// set options
 		@curl_setopt($curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
 		@curl_setopt($curl, CURLOPT_POST, true);
@@ -377,38 +382,38 @@ class Mollom
 		@curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
 		@curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, self::$timeout);
 		@curl_setopt($curl, CURLOPT_TIMEOUT, self::$timeout);
-		
+
 		// set url
 		@curl_setopt($curl, CURLOPT_URL, $server .'/'. self::$version);
-		
+
 		// set body
 		@curl_setopt($curl, CURLOPT_POSTFIELDS, $requestBody);
-		
+
 		// get response
 		$response = @curl_exec($curl);
-		
+
 		// get errors
 		$errorNumber = (int) @curl_errno($curl);
 		$errorString = @curl_error($curl);
-		
+
 		// close
 		@curl_close($curl);
-		
+
 		// validate response
 		if($response === false || $errorNumber != 0)
-		{			
+		{
 			// increment counter
 			$counter++;
-			
+
 			// no servers left
 			if($errorNumber == 28 && !isset(self::$serverList[$counter]) && $countServerList != 0) throw new Exception('No more servers available, try to increase the timeout.');
 
 			// timeout
 			elseif($errorNumber == 28 && isset(self::$serverList[$counter])) return self::doCall($method, $parameters, self::$serverList[$counter], $counter);
-			
+
 			// other error
 			else throw new Exception('Something went wrong. Maybe the following message can be handy.<br />'. $errorString, $errorNumber);
-		} 
+		}
 
 		// process response
 		$parts = explode("\r\n\r\n", $response);
@@ -489,7 +494,7 @@ class Mollom
 
 		// set autor ip
 		$authorIp = self::getIpAddress();
-		
+
 		// set parameters
 		if($sessionId != null) $parameters['session_id'] = (string) $sessionId;
 		if($authorIp != null) $parameters['author_ip'] = (string) $authorIp;
@@ -538,7 +543,7 @@ class Mollom
 
 		// set autor ip
 		$authorIp = self::getIpAddress();
-		
+
 		// set parameters
 		if($sessionId !== null) $parameters['session_id'] = (string) $sessionId;
 		if($authorIp !== null) $parameters['author_ip'] = (string) $authorIp;
@@ -559,7 +564,7 @@ class Mollom
 		return $aReturn;
 	}
 
-	
+
 	/**
 	 * Get the real IP-address
 	 *
@@ -569,11 +574,11 @@ class Mollom
 	{
 		// pre check
 		if(!isset($_SERVER['REMOTE_ADDR'])) return null;
-		
+
 		// get ip
 		$ipAddress = $_SERVER['REMOTE_ADDR'];
-		
-		if(self::$reverseProxy) 
+
+		if(self::$reverseProxy)
 		{
 			if(isset($_SERVER['HTTP_X_FORWARDED_FOR']))
 			{
@@ -586,12 +591,12 @@ class Mollom
    			// running in a cluster environment
 			if(isset($_SERVER['HTTP_X_CLUSTER_CLIENT_IP'])) return $_SERVER['HTTP_X_CLUSTER_CLIENT_IP'];
 		}
-		
+
 		// fallback
 		return $ipAddress;
 	}
-	
-	
+
+
 	/**
 	 * Obtains a list of valid servers
 	 *
@@ -609,7 +614,7 @@ class Mollom
 		foreach ($responseString->params->param->value->array->data->value as $server) self::$serverList[] = (string) $server->string;
 
 		if(count(self::$serverList) == 0) self::$serverList = array('http://xmlrpc3.mollom.com', 'http://xmlrpc2.mollom.com', 'http://xmlrpc1.mollom.com');
-		
+
 		// return
 		return self::$serverList;
 	}
@@ -697,7 +702,7 @@ class Mollom
 		return false;
 	}
 
-	
+
 	/**
 	 * Set the allowed reverse proxy Addresses
 	 *
@@ -708,11 +713,11 @@ class Mollom
 	{
 		// store allowed ip-addresses
 		self::$allowedReverseProxyAddresses = (array) $addresses;
-		
+
 		// set reverse proxy
 		self::$reverseProxy = (!empty($addresses)) ? true : false;
 	}
-	
+
 
 	/**
 	 * Set the private key
