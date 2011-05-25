@@ -815,4 +815,3 @@ class Mollom
 
 }
 
-?>
