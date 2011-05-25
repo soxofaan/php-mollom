@@ -116,6 +116,10 @@ class Mollom
 	 */
 	private static $userAgent = 'MollomPHP/1.1.3';
 
+	/**
+	 * Client's IP address (will be autodetected if not set).
+	 */
+	private static $ip = null;
 
 	/**
 	 * The current Mollom-version
@@ -564,6 +568,16 @@ class Mollom
 		return $aReturn;
 	}
 
+	/**
+	 * Set the client's IP address (use this to override the autodetection
+	 * from getIpAddress).
+	 *
+	 * @param string $ip
+	 */
+	public static function setIpAddress($ip)
+	{
+		self::$ip = $ip;
+	}
 
 	/**
 	 * Get the real IP-address
@@ -572,6 +586,11 @@ class Mollom
 	 */
 	public static function getIpAddress()
 	{
+		if (isset(self::$ip))
+		{
+			return self::$ip;
+		}
+
 		// pre check
 		if(!isset($_SERVER['REMOTE_ADDR'])) return null;
 
