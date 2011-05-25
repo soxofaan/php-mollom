@@ -133,7 +133,7 @@ class Mollom
 	 * @return	string
 	 * @param	mixed $value
 	 */
-	private function buildValue($value)
+	private static function buildValue($value)
 	{
 		// get type
 		$type = gettype($value);
