@@ -582,7 +582,7 @@ class Mollom
 		{
 			if(isset($_SERVER['HTTP_X_FORWARDED_FOR']))
 			{
-				if(!empty(self::$allowedReverseProxyAddresses) && in_array($ipAddress, self::$allowedProxyAddresses, true))
+				if(!empty(self::$allowedReverseProxyAddresses) && in_array($ipAddress, self::$allowedReverseProxyAddresses, true))
 				{
 					return array_pop(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
 				}
